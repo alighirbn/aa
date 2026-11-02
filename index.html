@@ -17,9 +17,11 @@ label{display:block;font-size:.85rem;font-weight:500;margin-bottom:2px}
 input,select{width:100%;font:inherit;font-size:.9rem;padding:6px 8px;border:1px solid var(--line);border-radius:4px;background:#fff;color:var(--ink)}
 input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .wrap{overflow-x:auto}
-table{border-collapse:collapse;width:100%;min-width:900px}
+table{border-collapse:collapse;width:100%;min-width:1300px}
 th,td{border:1px solid var(--line);padding:3px;vertical-align:middle}
 th{background:var(--soft);font-size:.8rem;font-weight:700;padding:6px 4px}
+td.nm{min-width:300px;width:26%}
+td.nm input{min-width:280px}
 td.n{width:34px;text-align:center;font-size:.85rem}
 td.x{width:34px;text-align:center}
 td input,td select{border:0;padding:5px 4px;min-width:80px}
@@ -41,7 +43,7 @@ button.del{border:0;color:var(--bad);padding:2px 8px;font-size:1.1rem}
   input,select{border:0}
   .wrap{overflow:visible}
   .po{display:block}
-  .sign{display:flex;justify-content:space-between;margin-top:30px}
+  .sign{display:flex;justify-content:flex-end;margin-top:30px}
   h2{margin-top:14px}
 }
 </style>
@@ -52,7 +54,9 @@ button.del{border:0;color:var(--bad);padding:2px 8px;font-size:1.1rem}
 
 <div class="top">
   <div><label>قسم محو الأمية في المديرية العامة للتربية في</label><input id="dept" value="النجف"></div>
-  <div class="noprint"><label>اسم المركز أو المدرسة (اختر من القائمة)</label><select id="center"><option value="">جارٍ تحميل القائمة…</option></select></div>
+  <div class="noprint"><label>اسم المركز أو المدرسة (اختر من القائمة)</label><select id="center" onchange="onCenter()"><option value="">جارٍ تحميل القائمة…</option></select></div>
+  <div class="noprint" id="pinBox" style="display:none"><label>رمز المركز (وصلك مع الرابط)</label><input id="pin" type="password" autocomplete="off"></div>
+  <div class="noprint" style="align-self:end"><button type="button" onclick="restore()">استرجاع ما أرسلته سابقاً</button></div>
   <div class="po"><label>اسم المركز أو المدرسة</label><input id="centerPrint" readonly></div>
 </div>
 
@@ -68,7 +72,7 @@ button.del{border:0;color:var(--bad);padding:2px 8px;font-size:1.1rem}
 <div class="wrap"><table id="t-cls"></table></div>
 <div class="bar noprint"><button type="button" onclick="addRow('cls')">+ إضافة صف</button></div>
 
-<div class="sign"><div>مدير المركز / المدرسة: ........................</div><div>مسؤول قسم محو الأمية: ........................</div></div>
+<div class="sign"><div>مدير المركز / المدرسة: ........................</div></div>
 
 <div id="msg" class="noprint"></div>
 <div class="bar noprint">
@@ -81,10 +85,11 @@ button.del{border:0;color:var(--bad);padding:2px 8px;font-size:1.1rem}
 // ضع هنا رابط Apps Script (Web app URL) بعد النشر
 const API_URL = "https://script.google.com/macros/s/AKfycbwPshRysS_fTgnn3V92ZfGCIOju5fVzs_gWboHEmQV5FQRx8kfpOqMYRfuvqYtGn8uZdQ/exec";
 
+const EDU = ["دبلوم","بكالوريوس","ماجستير","دكتوراه"];
 const KALAK = ["ملاك محو الأمية","تكليف","تنسيب","نقل داخلي"];
 const CFG = {
-  stay:[["الاسم الرباعي","text"],["التحصيل الدراسي","text"],["الاختصاص الدقيق","text"],["المواد التي يتم تدريسها","text"],["تأريخ مباشرة أول تعيين","date"],["نوع الملاك",KALAK],["تأريخ المباشرة في المركز أو المدرسة","date"],["المنصب إن وجد",["","مدير","معاون"]]],
-  out:[["الاسم الرباعي","text"],["التحصيل الدراسي","text"],["الاختصاص الدقيق","text"],["تأريخ مباشرة التعيين","date"],["نوع الملاك",KALAK],["تأريخ المباشرة في المركز أو المدرسة","date"],["حالة الفيض",["إنهاء تكليف","إنهاء تنسيب","تكليف إلى مركز أو مدرسة أخرى"]]],
+  stay:[["الاسم الرباعي","text"],["التحصيل الدراسي",EDU],["الاختصاص الدقيق","text"],["المواد التي يتم تدريسها","text"],["تأريخ مباشرة أول تعيين","date"],["نوع الملاك",KALAK],["تأريخ المباشرة في المركز أو المدرسة","date"],["المنصب إن وجد",["","مدير","معاون"]]],
+  out:[["الاسم الرباعي","text"],["التحصيل الدراسي",EDU],["الاختصاص الدقيق","text"],["تأريخ مباشرة التعيين","date"],["نوع الملاك",KALAK],["تأريخ المباشرة في المركز أو المدرسة","date"],["حالة الفيض",["إنهاء تكليف","إنهاء تنسيب","تكليف إلى مركز أو مدرسة أخرى"]]],
   cls:[["نوع الصف",["أساس","تكميل","خامس","سادس","مستوى أول","مستوى ثاني","مستوى ثالث"]],["عدد الدارسين","number"],["عدد الشعب للصف الواحد","number"]]
 };
 const REQ = {stay:[0,1,2,3,4,5,6], out:[0,1,2,3,4,5,6], cls:[0,1,2]}; // الحقول الإلزامية (المنصب اختياري)
@@ -95,13 +100,12 @@ function init(){
     T(k).innerHTML = "<thead><tr><th>ت</th>"+CFG[k].map(c=>"<th>"+c[0]+"</th>").join("")+"<th class='x'></th></tr></thead><tbody></tbody>";
     addRow(k);
   }
-  loadCenters();
 }
 
 function cell(c){
   const t=c[1];
   if(Array.isArray(t)) return "<td><select>"+(t[0]===""?"":"<option value=''>— اختر —</option>")+t.map(o=>"<option>"+o+"</option>").join("")+"</select></td>";
-  return "<td><input type='"+t+"'"+(t==="number"?" min='0' inputmode='numeric'":"")+"></td>";
+  return "<td"+(c[0]==="الاسم الرباعي"?" class='nm'":"")+"><input type='"+t+"'"+(t==="number"?" min='0' inputmode='numeric'":"")+"></td>";
 }
 function addRow(k){
   const tb=T(k).tBodies[0], tr=tb.insertRow();
@@ -120,16 +124,55 @@ function collect(k){
   return out;
 }
 
+let CENTERS=[], ready=false;
+const $=id=>document.getElementById(id);
 async function loadCenters(){
-  const s=document.getElementById("center");
+  const s=$("center");
   const fail=t=>{ s.innerHTML="<option value=''>تعذر التحميل: "+t+"</option>"; };
   try{
     const r=await fetch(API_URL); const txt=await r.text(); let list;
     try{ list=JSON.parse(txt); }catch(e){ return fail("الرابط يرجع صفحة وليس بيانات (النشر ليس Anyone أو لم تُمنح الصلاحية)"); }
     if(list.error) return fail(list.error);
     if(!list.length) return fail("ورقة المراكز فارغة");
+    CENTERS=list;
     s.innerHTML="<option value=''>— اختر المركز أو المدرسة —</option>"+list.map(c=>"<option>"+c.name+"</option>").join("");
   }catch(e){ fail("لا يمكن الوصول للرابط ("+e.message+")"); }
+}
+function onCenter(){ const c=CENTERS.find(x=>x.name===$("center").value); $("pinBox").style.display=(c&&c.locked)?"block":"none"; }
+
+// ===== مسودة تلقائية على الجهاز =====
+function snap(){ const d={center:$("center").value,dept:$("dept").value}; for(const k in CFG) d[k]=[...T(k).tBodies[0].rows].map(r=>[...r.querySelectorAll("input,select")].map(e=>e.value)); return d; }
+let tm; document.addEventListener("input",saveDraft);
+function saveDraft(){ if(!ready) return; clearTimeout(tm); tm=setTimeout(()=>{ try{ localStorage.setItem("tasweya_draft",JSON.stringify(snap())); }catch(e){} },400); }
+function fill(d){
+  if(d.dept) $("dept").value=d.dept;
+  for(const k in CFG){
+    const tb=T(k).tBodies[0]; tb.innerHTML="";
+    const rows=(d[k]&&d[k].length)?d[k]:[null];
+    rows.forEach(v=>{ addRow(k); if(v) [...tb.rows[tb.rows.length-1].querySelectorAll("input,select")].forEach((e,i)=>e.value=(v[i]==null?"":v[i])); });
+    renum(k);
+  }
+}
+function loadDraft(){
+  try{
+    const d=JSON.parse(localStorage.getItem("tasweya_draft")||"null"); if(!d) return;
+    if(!["stay","out","cls"].some(k=>(d[k]||[]).some(r=>r.some(v=>v!=="")))) return;
+    fill(d); if(d.center && CENTERS.some(c=>c.name===d.center)){ $("center").value=d.center; onCenter(); }
+    show("تم استرجاع مسودة محفوظة على هذا الجهاز. راجعها ثم أرسل أو اطبع.","ok");
+  }catch(e){}
+}
+
+// ===== استرجاع المرسل سابقاً من الـ Sheet =====
+function q(c){ return API_URL+"?center="+encodeURIComponent(c)+"&pin="+encodeURIComponent($("pin").value.trim()); }
+async function restore(){
+  const c=$("center").value; if(!c) return show("اختر اسم المركز أو المدرسة أولاً.","err");
+  if(!confirm("سيتم استبدال ما هو مكتوب الآن بالبيانات التي أُرسلت سابقاً. متابعة؟")) return;
+  try{
+    const d=await (await fetch(q(c))).json();
+    if(d.error) return show(d.error,"err");
+    if(!d.found) return show("لا توجد بيانات مرسلة سابقاً لهذا المركز.","err");
+    fill(d); saveDraft(); show("تم استرجاع البيانات المرسلة. عدّل ما تحتاج، ثم اطبع أو أعد الإرسال.","ok");
+  }catch(e){ show("تعذر الاسترجاع، تحقق من الاتصال.","err"); }
 }
 
 function show(t,c){ const m=document.getElementById("msg"); m.className=c; m.textContent=t; m.scrollIntoView({block:"center"}); }
@@ -138,7 +181,7 @@ async function send(){
   document.querySelectorAll(".err-cell").forEach(e=>e.classList.remove("err-cell"));
   const center=document.getElementById("center").value;
   if(!center) return show("اختر اسم المركز أو المدرسة أولاً.","err");
-  const data={center, dept:document.getElementById("dept").value.trim()}; let bad=0;
+  const data={center, dept:$("dept").value.trim(), pin:$("pin").value.trim()}; let bad=0;
   for(const k in CFG){
     const rows=collect(k);
     rows.forEach(r=>REQ[k].forEach(i=>{ if(!r.vals[i]){ r.el[i].classList.add("err-cell"); bad++; } }));
@@ -147,11 +190,14 @@ async function send(){
   }
   if(!data.stay.length && !data.out.length && !data.cls.length) return show("لم تُدخل أي بيانات.","err");
   if(bad) return show("هناك حقول ناقصة أو اسم غير رباعي (مظللة بالأحمر). أكملها ثم أعد الإرسال.","err");
-  if(!confirm("سيتم إرسال بيانات: "+center+"\nإذا أُرسلت سابقاً فستُستبدل. متابعة؟")) return;
-  const btn=document.getElementById("send"); btn.disabled=true;
+  const btn=$("send"); btn.disabled=true;
   try{
+    const chk=await (await fetch(q(center))).json();
+    if(chk.error){ btn.disabled=false; return show(chk.error,"err"); }
+    if(!confirm("سيتم إرسال بيانات: "+center+(chk.found?"\nسبق أن أُرسلت بيانات لهذا المركز وستُستبدل بهذه.":"")+"\nمتابعة؟")){ btn.disabled=false; return; }
     await fetch(API_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:JSON.stringify(data)});
-    show("تم إرسال البيانات. اطبع نسخة للتوقيع وسلّمها للجهاز التنفيذي.","ok");
+    show("تم إرسال البيانات. اطبع نسخة للتوقيع وسلّمها للجهاز التنفيذي. إذا نسيت الطباعة، اختر المركز واضغط (استرجاع ما أرسلته سابقاً).","ok");
+    if(confirm("تم الإرسال. هل تريد طباعة النسخة الآن؟")) doPrint();
   }catch(e){ show("فشل الإرسال، تحقق من الاتصال وأعد المحاولة.","err"); }
   btn.disabled=false;
 }
@@ -162,6 +208,7 @@ function doPrint(){
   window.print();
 }
 init();
+loadCenters().then(()=>{ loadDraft(); ready=true; });
 </script>
 </body>
 </html>
