@@ -22,6 +22,7 @@ th,td{border:1px solid var(--line);padding:3px;vertical-align:middle}
 th{background:var(--soft);font-size:.8rem;font-weight:700;padding:6px 4px}
 td.nm{min-width:210px;width:24%}
 td.nm input{min-width:0}
+input[type=date]{direction:ltr;text-align:center}
 td.n{width:34px;text-align:center;font-size:.85rem}
 td.x{width:34px;text-align:center}
 td input,td select{border:0;padding:5px 3px;min-width:0;font-size:.85rem}
@@ -105,7 +106,7 @@ function init(){
 function cell(c){
   const t=c[1];
   if(Array.isArray(t)) return "<td><select>"+(t[0]===""?"":"<option value=''>— اختر —</option>")+t.map(o=>"<option>"+o+"</option>").join("")+"</select></td>";
-  return "<td"+(c[0]==="الاسم الرباعي"?" class='nm'":"")+"><input type='"+t+"'"+(t==="number"?" min='0' inputmode='numeric'":"")+"></td>";
+  return "<td"+(c[0]==="الاسم الرباعي"?" class='nm'":"")+"><input type='"+t+"'"+(t==="number"?" min='0' inputmode='numeric'":"")+(t==="date"?" lang='en-GB' dir='ltr'":"")+"></td>";
 }
 function addRow(k){
   const tb=T(k).tBodies[0], tr=tb.insertRow();
@@ -204,7 +205,6 @@ async function send(){
 
 function doPrint(){
   document.getElementById("centerPrint").value=document.getElementById("center").value;
-  // أظهر قيم القوائم عند الطباعة
   window.print();
 }
 init();
