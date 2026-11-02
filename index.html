@@ -9,7 +9,7 @@
 :root{--ink:#1c2733;--line:#9aa7b4;--soft:#eef2f6;--accent:#1f5a7a;--bad:#b3261e}
 *{box-sizing:border-box}
 body{margin:0;font-family:Tajawal,Tahoma,sans-serif;color:var(--ink);background:#fff;line-height:1.6}
-main{max-width:1250px;margin:0 auto;padding:16px}
+main{width:100%;max-width:none;margin:0;padding:12px 10px}
 h1{font-size:1.25rem;margin:0 0 4px}
 h2{font-size:1.05rem;margin:26px 0 8px;padding-right:10px;border-right:4px solid var(--accent)}
 .top{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin:12px 0}
@@ -17,14 +17,14 @@ label{display:block;font-size:.85rem;font-weight:500;margin-bottom:2px}
 input,select{width:100%;font:inherit;font-size:.9rem;padding:6px 8px;border:1px solid var(--line);border-radius:4px;background:#fff;color:var(--ink)}
 input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .wrap{overflow-x:auto}
-table{border-collapse:collapse;width:100%;min-width:1300px}
+table{border-collapse:collapse;width:100%;min-width:1000px}
 th,td{border:1px solid var(--line);padding:3px;vertical-align:middle}
 th{background:var(--soft);font-size:.8rem;font-weight:700;padding:6px 4px}
-td.nm{min-width:300px;width:26%}
-td.nm input{min-width:280px}
+td.nm{min-width:210px;width:24%}
+td.nm input{min-width:0}
 td.n{width:34px;text-align:center;font-size:.85rem}
 td.x{width:34px;text-align:center}
-td input,td select{border:0;padding:5px 4px;min-width:80px}
+td input,td select{border:0;padding:5px 3px;min-width:0;font-size:.85rem}
 button{font:inherit;cursor:pointer;border-radius:4px;border:1px solid var(--accent);background:#fff;color:var(--accent);padding:6px 14px}
 button.main{background:var(--accent);color:#fff}
 button.del{border:0;color:var(--bad);padding:2px 8px;font-size:1.1rem}
