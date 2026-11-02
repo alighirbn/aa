@@ -36,7 +36,8 @@ button.del{border:0;color:var(--bad);padding:2px 8px;font-size:1.1rem}
 #msg{margin:12px 0;padding:10px;border-radius:4px;display:none}
 #msg.ok{display:block;background:#e6f4ea;color:#14532d}
 #msg.err{display:block;background:#fdecea;color:var(--bad)}
-.err-cell{background:#fdecea}
+.err-cell{background:#ff8a80!important;outline:3px solid #d50000;outline-offset:-3px}
+td.err-cell select,td.err-cell input{background:transparent}
 .sign,.po{display:none}
 @media print{
   @page{size:A4 landscape;margin:10mm}
@@ -47,6 +48,7 @@ button.del{border:0;color:var(--bad);padding:2px 8px;font-size:1.1rem}
   input,select{border:0}
   .wrap{overflow:visible}
   #msg{display:none!important}
+  .err-cell{background:none!important;outline:none}
   td.dtc{min-width:0}
   .dtg{justify-content:center;gap:2px}
   .dtg select{flex:0 0 auto;width:auto;padding:2px 0;text-align:center;text-align-last:center}
