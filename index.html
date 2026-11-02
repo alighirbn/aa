@@ -124,7 +124,7 @@ function upd(td){
   dv.value=(d&&m&&y)?y+"-"+String(m).padStart(2,"0")+"-"+String(d).padStart(2,"0"):"";
   td.classList.remove("err-cell");
 }
-document.addEventListener("change",e=>{ if(e.target.classList&&e.target.classList.contains("dp")) upd(e.target.closest("td")); });
+["change","input"].forEach(ev=>document.addEventListener(ev,e=>{ if(e.target.classList&&e.target.classList.contains("dp")) upd(e.target.closest("td")); }));
 // عنصر واحد لكل عمود (الحقل المخفي للتاريخ، أو الحقل نفسه)
 function fields(r){ return [...r.cells].slice(1,-1).map(td=>td.querySelector(".dv")||td.querySelector("input,select")); }
 function mark(e){ (e.type==="hidden"?e.closest("td"):e).classList.add("err-cell"); }
@@ -132,7 +132,7 @@ function setVal(e,v){
   v=(v==null?"":String(v));
   if(e.classList.contains("dv")){
     const td=e.closest("td"), sel=[...td.querySelectorAll("select.dp")], m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
-    if(m){ sel[0].value=String(+m[3]); sel[1].value=String(+m[2]); sel[2].value=m[1]; } else sel.forEach(x=>x.value="");
+    if(m){ [String(+m[3]),String(+m[2]),m[1]].forEach((x,i)=>{ if(![...sel[i].options].some(o=>o.value===x)) sel[i].add(new Option(x,x)); sel[i].value=x; }); } else sel.forEach(x=>x.value="");
     upd(td);
   } else e.value=v;
 }
@@ -203,6 +203,7 @@ function show(t,c){ const m=document.getElementById("msg"); m.className=c; m.tex
 
 async function send(){
   document.querySelectorAll(".err-cell").forEach(e=>e.classList.remove("err-cell"));
+  document.querySelectorAll("td.dtc").forEach(upd); // مزامنة التاريخ مع ما يظهر فعلاً في القوائم
   const center=document.getElementById("center").value;
   if(!center) return show("اختر اسم المركز أو المدرسة أولاً.","err");
   const data={center, dept:$("dept").value.trim(), pin:$("pin").value.trim()}; let bad=0;
