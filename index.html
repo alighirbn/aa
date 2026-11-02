@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>جدول تسوية الملاكات التعليمية</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#1c2733;--line:#9aa7b4;--soft:#eef2f6;--accent:#1f5a7a;--bad:#b3261e}
+*{box-sizing:border-box}
+body{margin:0;font-family:Tajawal,Tahoma,sans-serif;color:var(--ink);background:#fff;line-height:1.6}
+main{max-width:1250px;margin:0 auto;padding:16px}
+h1{font-size:1.25rem;margin:0 0 4px}
+h2{font-size:1.05rem;margin:26px 0 8px;padding-right:10px;border-right:4px solid var(--accent)}
+.top{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin:12px 0}
+label{display:block;font-size:.85rem;font-weight:500;margin-bottom:2px}
+input,select{width:100%;font:inherit;font-size:.9rem;padding:6px 8px;border:1px solid var(--line);border-radius:4px;background:#fff;color:var(--ink)}
+input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:900px}
+th,td{border:1px solid var(--line);padding:3px;vertical-align:middle}
+th{background:var(--soft);font-size:.8rem;font-weight:700;padding:6px 4px}
+td.n{width:34px;text-align:center;font-size:.85rem}
+td.x{width:34px;text-align:center}
+td input,td select{border:0;padding:5px 4px;min-width:80px}
+button{font:inherit;cursor:pointer;border-radius:4px;border:1px solid var(--accent);background:#fff;color:var(--accent);padding:6px 14px}
+button.main{background:var(--accent);color:#fff}
+button.del{border:0;color:var(--bad);padding:2px 8px;font-size:1.1rem}
+.bar{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}
+#msg{margin:12px 0;padding:10px;border-radius:4px;display:none}
+#msg.ok{display:block;background:#e6f4ea;color:#14532d}
+#msg.err{display:block;background:#fdecea;color:var(--bad)}
+.err-cell{background:#fdecea}
+.sign,.po{display:none}
+@media print{
+  @page{size:A4 landscape;margin:10mm}
+  .noprint,button,.x{display:none!important}
+  main{padding:0;max-width:none}
+  table{min-width:0;font-size:10px}
+  td input,td select{font-size:10px;appearance:none;-webkit-appearance:none;padding:2px}
+  input,select{border:0}
+  .wrap{overflow:visible}
+  .po{display:block}
+  .sign{display:flex;justify-content:space-between;margin-top:30px}
+  h2{margin-top:14px}
+}
+</style>
+</head>
+<body>
+<main>
+<h1>جدول آلية تسوية الملاكات التعليمية لمراكز محو الأمية ومدارس التعليم المسرّع</h1>
+
+<div class="top">
+  <div><label>قسم محو الأمية في المديرية العامة للتربية في</label><input id="dept" value="النجف"></div>
+  <div class="noprint"><label>اسم المركز أو المدرسة (اختر من القائمة)</label><select id="center"><option value="">جارٍ تحميل القائمة…</option></select></div>
+  <div class="po"><label>اسم المركز أو المدرسة</label><input id="centerPrint" readonly></div>
+</div>
+
+<h2>أسماء المطلوب بقاؤهم في المركز أو المدرسة</h2>
+<div class="wrap"><table id="t-stay"></table></div>
+<div class="bar noprint"><button type="button" onclick="addRow('stay')">+ إضافة اسم</button></div>
+
+<h2>أسماء الفيض من المركز أو المدرسة</h2>
+<div class="wrap"><table id="t-out"></table></div>
+<div class="bar noprint"><button type="button" onclick="addRow('out')">+ إضافة اسم</button></div>
+
+<h2>أعداد الدارسين حسب الصفوف والشعب</h2>
+<div class="wrap"><table id="t-cls"></table></div>
+<div class="bar noprint"><button type="button" onclick="addRow('cls')">+ إضافة صف</button></div>
+
+<div class="sign"><div>مدير المركز / المدرسة: ........................</div><div>مسؤول قسم محو الأمية: ........................</div></div>
+
+<div id="msg" class="noprint"></div>
+<div class="bar noprint">
+  <button class="main" type="button" id="send" onclick="send()">إرسال البيانات</button>
+  <button type="button" onclick="doPrint()">طباعة نسخة للتوقيع</button>
+</div>
+</main>
+
+<script>
+// ضع هنا رابط Apps Script (Web app URL) بعد النشر
+const API_URL = "https://script.google.com/macros/s/AKfycbxt9CIGnjCvWphUTS_fRTpEc_FG76Ttf__U_P6c9PlKyTWCpChtgpPrT0mDN3PUTL8wMA/exec";
+
+const KALAK = ["ملاك محو الأمية","تكليف","تنسيب","نقل داخلي"];
+const CFG = {
+  stay:[["الاسم الرباعي","text"],["التحصيل الدراسي","text"],["الاختصاص الدقيق","text"],["المواد التي يتم تدريسها","text"],["تأريخ مباشرة أول تعيين","date"],["نوع الملاك",KALAK],["تأريخ المباشرة في المركز أو المدرسة","date"],["المنصب إن وجد",["","مدير","معاون"]]],
+  out:[["الاسم الرباعي","text"],["التحصيل الدراسي","text"],["الاختصاص الدقيق","text"],["تأريخ مباشرة التعيين","date"],["نوع الملاك",KALAK],["تأريخ المباشرة في المركز أو المدرسة","date"],["حالة الفيض",["إنهاء تكليف","إنهاء تنسيب","تكليف إلى مركز أو مدرسة أخرى"]]],
+  cls:[["نوع الصف",["أساس","تكميل","خامس","سادس","مستوى أول","مستوى ثاني","مستوى ثالث"]],["عدد الدارسين","number"],["عدد الشعب للصف الواحد","number"]]
+};
+const REQ = {stay:[0,1,2,3,4,5,6], out:[0,1,2,3,4,5,6], cls:[0,1,2]}; // الحقول الإلزامية (المنصب اختياري)
+const T = k => document.getElementById("t-"+k);
+
+function init(){
+  for(const k in CFG){
+    T(k).innerHTML = "<thead><tr><th>ت</th>"+CFG[k].map(c=>"<th>"+c[0]+"</th>").join("")+"<th class='x'></th></tr></thead><tbody></tbody>";
+    addRow(k);
+  }
+  loadCenters();
+}
+
+function cell(c){
+  const t=c[1];
+  if(Array.isArray(t)) return "<td><select>"+(t[0]===""?"":"<option value=''>— اختر —</option>")+t.map(o=>"<option>"+o+"</option>").join("")+"</select></td>";
+  return "<td><input type='"+t+"'"+(t==="number"?" min='0' inputmode='numeric'":"")+"></td>";
+}
+function addRow(k){
+  const tb=T(k).tBodies[0], tr=tb.insertRow();
+  tr.innerHTML="<td class='n'></td>"+CFG[k].map(cell).join("")+"<td class='x'><button type='button' class='del' title='حذف الصف' onclick='delRow(this,\""+k+"\")'>×</button></td>";
+  renum(k);
+}
+function delRow(b,k){ const tb=T(k).tBodies[0]; if(tb.rows.length>1) b.closest("tr").remove(); else b.closest("tr").querySelectorAll("input,select").forEach(e=>e.value=""); renum(k); }
+function renum(k){ [...T(k).tBodies[0].rows].forEach((r,i)=>r.cells[0].textContent=i+1); }
+
+function collect(k){
+  const out=[];
+  [...T(k).tBodies[0].rows].forEach(r=>{
+    const f=[...r.querySelectorAll("input,select")];
+    if(f.some(e=>e.value.trim()!=="")) out.push({el:f, vals:f.map(e=>e.value.trim())});
+  });
+  return out;
+}
+
+async function loadCenters(){
+  const s=document.getElementById("center");
+  try{
+    const r=await fetch(API_URL); const list=await r.json();
+    s.innerHTML="<option value=''>— اختر المركز أو المدرسة —</option>"+list.map(c=>"<option>"+c.name+"</option>").join("");
+  }catch(e){ s.innerHTML="<option value=''>تعذر تحميل القائمة، تحقق من الرابط</option>"; }
+}
+
+function show(t,c){ const m=document.getElementById("msg"); m.className=c; m.textContent=t; m.scrollIntoView({block:"center"}); }
+
+async function send(){
+  document.querySelectorAll(".err-cell").forEach(e=>e.classList.remove("err-cell"));
+  const center=document.getElementById("center").value;
+  if(!center) return show("اختر اسم المركز أو المدرسة أولاً.","err");
+  const data={center, dept:document.getElementById("dept").value.trim()}; let bad=0;
+  for(const k in CFG){
+    const rows=collect(k);
+    rows.forEach(r=>REQ[k].forEach(i=>{ if(!r.vals[i]){ r.el[i].classList.add("err-cell"); bad++; } }));
+    rows.forEach(r=>{ const nm=r.vals[0]; if(k!=="cls" && nm && nm.split(/\s+/).length<4){ r.el[0].classList.add("err-cell"); bad++; } });
+    data[k]=rows.map(r=>r.vals);
+  }
+  if(!data.stay.length && !data.out.length && !data.cls.length) return show("لم تُدخل أي بيانات.","err");
+  if(bad) return show("هناك حقول ناقصة أو اسم غير رباعي (مظللة بالأحمر). أكملها ثم أعد الإرسال.","err");
+  if(!confirm("سيتم إرسال بيانات: "+center+"\nإذا أُرسلت سابقاً فستُستبدل. متابعة؟")) return;
+  const btn=document.getElementById("send"); btn.disabled=true;
+  try{
+    await fetch(API_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:JSON.stringify(data)});
+    show("تم إرسال البيانات. اطبع نسخة للتوقيع وسلّمها للجهاز التنفيذي.","ok");
+  }catch(e){ show("فشل الإرسال، تحقق من الاتصال وأعد المحاولة.","err"); }
+  btn.disabled=false;
+}
+
+function doPrint(){
+  document.getElementById("centerPrint").value=document.getElementById("center").value;
+  // أظهر قيم القوائم عند الطباعة
+  window.print();
+}
+init();
+</script>
+</body>
+</html>
