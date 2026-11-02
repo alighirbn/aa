@@ -122,10 +122,14 @@ function collect(k){
 
 async function loadCenters(){
   const s=document.getElementById("center");
+  const fail=t=>{ s.innerHTML="<option value=''>تعذر التحميل: "+t+"</option>"; };
   try{
-    const r=await fetch(API_URL); const list=await r.json();
+    const r=await fetch(API_URL); const txt=await r.text(); let list;
+    try{ list=JSON.parse(txt); }catch(e){ return fail("الرابط يرجع صفحة وليس بيانات (النشر ليس Anyone أو لم تُمنح الصلاحية)"); }
+    if(list.error) return fail(list.error);
+    if(!list.length) return fail("ورقة المراكز فارغة");
     s.innerHTML="<option value=''>— اختر المركز أو المدرسة —</option>"+list.map(c=>"<option>"+c.name+"</option>").join("");
-  }catch(e){ s.innerHTML="<option value=''>تعذر تحميل القائمة، تحقق من الرابط</option>"; }
+  }catch(e){ fail("لا يمكن الوصول للرابط ("+e.message+")"); }
 }
 
 function show(t,c){ const m=document.getElementById("msg"); m.className=c; m.textContent=t; m.scrollIntoView({block:"center"}); }
