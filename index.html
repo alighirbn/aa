@@ -22,7 +22,10 @@ th,td{border:1px solid var(--line);padding:3px;vertical-align:middle}
 th{background:var(--soft);font-size:.8rem;font-weight:700;padding:6px 4px}
 td.nm{min-width:210px;width:24%}
 td.nm input{min-width:0}
-input[type=date]{direction:ltr;text-align:center}
+td.dtc{min-width:150px}
+.dtg{display:flex;align-items:center;direction:ltr;gap:1px}
+.dtg select{width:auto;flex:1 1 0;min-width:0;padding:5px 0}
+.dtg span{color:var(--line)}
 td.n{width:34px;text-align:center;font-size:.85rem}
 td.x{width:34px;text-align:center}
 td input,td select{border:0;padding:5px 3px;min-width:0;font-size:.85rem}
@@ -103,10 +106,34 @@ function init(){
   }
 }
 
+// ===== التاريخ: ثلاث قوائم (يوم / شهر / سنة) + حقل مخفي بصيغة yyyy-mm-dd =====
+const rng=(a,b)=>{ const o=[]; if(a<=b) for(let i=a;i<=b;i++) o.push(i); else for(let i=a;i>=b;i--) o.push(i); return o; };
+const opts=(a,ph)=>"<option value=''>"+ph+"</option>"+a.map(x=>"<option>"+x+"</option>").join("");
+const DAYS=opts(rng(1,31),"يوم"), MONTHS=opts(rng(1,12),"شهر"), YEARS=opts(rng(new Date().getFullYear(),1950),"سنة");
+function dateCell(){ return "<td class='dtc'><div class='dtg'><select class='dp'>"+DAYS+"</select><span>/</span><select class='dp'>"+MONTHS+"</select><span>/</span><select class='dp'>"+YEARS+"</select><input type='hidden' class='dv'></div></td>"; }
+function upd(td){
+  const [d,m,y]=[...td.querySelectorAll("select.dp")].map(x=>x.value), dv=td.querySelector(".dv");
+  dv.value=(d&&m&&y)?y+"-"+String(m).padStart(2,"0")+"-"+String(d).padStart(2,"0"):"";
+  td.classList.remove("err-cell");
+}
+document.addEventListener("change",e=>{ if(e.target.classList&&e.target.classList.contains("dp")) upd(e.target.closest("td")); });
+// عنصر واحد لكل عمود (الحقل المخفي للتاريخ، أو الحقل نفسه)
+function fields(r){ return [...r.cells].slice(1,-1).map(td=>td.querySelector(".dv")||td.querySelector("input,select")); }
+function mark(e){ (e.type==="hidden"?e.closest("td"):e).classList.add("err-cell"); }
+function setVal(e,v){
+  v=(v==null?"":String(v));
+  if(e.classList.contains("dv")){
+    const td=e.closest("td"), sel=[...td.querySelectorAll("select.dp")], m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(v);
+    if(m){ sel[0].value=String(+m[3]); sel[1].value=String(+m[2]); sel[2].value=m[1]; } else sel.forEach(x=>x.value="");
+    upd(td);
+  } else e.value=v;
+}
+
 function cell(c){
   const t=c[1];
   if(Array.isArray(t)) return "<td><select>"+(t[0]===""?"":"<option value=''>— اختر —</option>")+t.map(o=>"<option>"+o+"</option>").join("")+"</select></td>";
-  return "<td"+(c[0]==="الاسم الرباعي"?" class='nm'":"")+"><input type='"+t+"'"+(t==="number"?" min='0' inputmode='numeric'":"")+(t==="date"?" lang='en-GB' dir='ltr'":"")+"></td>";
+  if(t==="date") return dateCell();
+  return "<td"+(c[0]==="الاسم الرباعي"?" class='nm'":"")+"><input type='"+t+"'"+(t==="number"?" min='0' inputmode='numeric'":"")+"></td>";
 }
 function addRow(k){
   const tb=T(k).tBodies[0], tr=tb.insertRow();
@@ -119,13 +146,13 @@ function renum(k){ [...T(k).tBodies[0].rows].forEach((r,i)=>r.cells[0].textConte
 function collect(k){
   const out=[];
   [...T(k).tBodies[0].rows].forEach(r=>{
-    const f=[...r.querySelectorAll("input,select")];
+    const f=fields(r);
     if(f.some(e=>e.value.trim()!=="")) out.push({el:f, vals:f.map(e=>e.value.trim())});
   });
   return out;
 }
 
-let CENTERS=[], ready=false;
+let CENTERS=[];
 const $=id=>document.getElementById(id);
 async function loadCenters(){
   const s=$("center");
@@ -141,26 +168,14 @@ async function loadCenters(){
 }
 function onCenter(){ const c=CENTERS.find(x=>x.name===$("center").value); $("pinBox").style.display=(c&&c.locked)?"block":"none"; }
 
-// ===== مسودة تلقائية على الجهاز =====
-function snap(){ const d={center:$("center").value,dept:$("dept").value}; for(const k in CFG) d[k]=[...T(k).tBodies[0].rows].map(r=>[...r.querySelectorAll("input,select")].map(e=>e.value)); return d; }
-let tm; document.addEventListener("input",saveDraft);
-function saveDraft(){ if(!ready) return; clearTimeout(tm); tm=setTimeout(()=>{ try{ localStorage.setItem("tasweya_draft",JSON.stringify(snap())); }catch(e){} },400); }
 function fill(d){
   if(d.dept) $("dept").value=d.dept;
   for(const k in CFG){
     const tb=T(k).tBodies[0]; tb.innerHTML="";
     const rows=(d[k]&&d[k].length)?d[k]:[null];
-    rows.forEach(v=>{ addRow(k); if(v) [...tb.rows[tb.rows.length-1].querySelectorAll("input,select")].forEach((e,i)=>e.value=(v[i]==null?"":v[i])); });
+    rows.forEach(v=>{ addRow(k); if(v) fields(tb.rows[tb.rows.length-1]).forEach((e,i)=>setVal(e,v[i])); });
     renum(k);
   }
-}
-function loadDraft(){
-  try{
-    const d=JSON.parse(localStorage.getItem("tasweya_draft")||"null"); if(!d) return;
-    if(!["stay","out","cls"].some(k=>(d[k]||[]).some(r=>r.some(v=>v!=="")))) return;
-    fill(d); if(d.center && CENTERS.some(c=>c.name===d.center)){ $("center").value=d.center; onCenter(); }
-    show("تم استرجاع مسودة محفوظة على هذا الجهاز. راجعها ثم أرسل أو اطبع.","ok");
-  }catch(e){}
 }
 
 // ===== استرجاع المرسل سابقاً من الـ Sheet =====
@@ -172,7 +187,7 @@ async function restore(){
     const d=await (await fetch(q(c))).json();
     if(d.error) return show(d.error,"err");
     if(!d.found) return show("لا توجد بيانات مرسلة سابقاً لهذا المركز.","err");
-    fill(d); saveDraft(); show("تم استرجاع البيانات المرسلة. عدّل ما تحتاج، ثم اطبع أو أعد الإرسال.","ok");
+    fill(d); show("تم استرجاع البيانات المرسلة. عدّل ما تحتاج، ثم اطبع أو أعد الإرسال.","ok");
   }catch(e){ show("تعذر الاسترجاع، تحقق من الاتصال.","err"); }
 }
 
@@ -185,12 +200,13 @@ async function send(){
   const data={center, dept:$("dept").value.trim(), pin:$("pin").value.trim()}; let bad=0;
   for(const k in CFG){
     const rows=collect(k);
-    rows.forEach(r=>REQ[k].forEach(i=>{ if(!r.vals[i]){ r.el[i].classList.add("err-cell"); bad++; } }));
-    rows.forEach(r=>{ const nm=r.vals[0]; if(k!=="cls" && nm && nm.split(/\s+/).length<4){ r.el[0].classList.add("err-cell"); bad++; } });
+    rows.forEach(r=>REQ[k].forEach(i=>{ if(!r.vals[i]){ mark(r.el[i]); bad++; } }));
+    rows.forEach(r=>{ const nm=r.vals[0]; if(k!=="cls" && nm && nm.split(/\s+/).length<4){ mark(r.el[0]); bad++; } });
+    rows.forEach(r=>r.el.forEach(e=>{ if(e.classList.contains("dv") && e.value){ const [y,m,d]=e.value.split("-").map(Number), dt=new Date(y,m-1,d); if(dt.getMonth()!==m-1||dt.getDate()!==d){ mark(e); bad++; } } }));
     data[k]=rows.map(r=>r.vals);
   }
   if(!data.stay.length && !data.out.length && !data.cls.length) return show("لم تُدخل أي بيانات.","err");
-  if(bad) return show("هناك حقول ناقصة أو اسم غير رباعي (مظللة بالأحمر). أكملها ثم أعد الإرسال.","err");
+  if(bad) return show("هناك حقول ناقصة أو اسم غير رباعي أو تاريخ غير صحيح (مظللة بالأحمر). أكملها ثم أعد الإرسال.","err");
   const btn=$("send"); btn.disabled=true;
   try{
     const chk=await (await fetch(q(center))).json();
@@ -208,7 +224,7 @@ function doPrint(){
   window.print();
 }
 init();
-loadCenters().then(()=>{ loadDraft(); ready=true; });
+loadCenters();
 </script>
 </body>
 </html>
