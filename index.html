@@ -20,6 +20,7 @@ input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent);ou
 table{border-collapse:collapse;width:100%;min-width:1000px}
 th,td{border:1px solid var(--line);padding:3px;vertical-align:middle}
 th{background:var(--soft);font-size:.8rem;font-weight:700;padding:6px 4px}
+.dt{direction:ltr;text-align:center}
 td.nm{min-width:210px;width:24%}
 td.nm input{min-width:0}
 td.n{width:34px;text-align:center;font-size:.85rem}
@@ -95,6 +96,21 @@ const CFG = {
 const REQ = {stay:[0,1,2,3,4,5,6], out:[0,1,2,3,4,5,6], cls:[0,1,2]}; // الحقول الإلزامية (المنصب اختياري)
 const T = k => document.getElementById("t-"+k);
 
+// ===== إدخال التاريخ: اكتب الأرقام فقط (15032015) وتُضاف الشرطات تلقائياً =====
+const AR="٠١٢٣٤٥٦٧٨٩";
+function mask(el){
+  const d=el.value.replace(/[٠-٩]/g,c=>AR.indexOf(c)).replace(/\D/g,"").slice(0,8);
+  let o=d.slice(0,2); if(d.length>2) o+="/"+d.slice(2,4); if(d.length>4) o+="/"+d.slice(4,8);
+  el.value=o;
+}
+document.addEventListener("input",e=>{ if(e.target.classList&&e.target.classList.contains("dt")) mask(e.target); });
+function toISO(v){
+  const m=/^(\d{2})\/(\d{2})\/(\d{4})$/.exec(v); if(!m) return null;
+  const d=+m[1], mo=+m[2], y=+m[3], dt=new Date(y,mo-1,d);
+  if(y<1940||y>2040||dt.getMonth()!==mo-1||dt.getDate()!==d) return null;
+  return m[3]+"-"+m[2]+"-"+m[1];
+}
+
 function init(){
   for(const k in CFG){
     T(k).innerHTML = "<thead><tr><th>ت</th>"+CFG[k].map(c=>"<th>"+c[0]+"</th>").join("")+"<th class='x'></th></tr></thead><tbody></tbody>";
@@ -105,6 +121,7 @@ function init(){
 function cell(c){
   const t=c[1];
   if(Array.isArray(t)) return "<td><select>"+(t[0]===""?"":"<option value=''>— اختر —</option>")+t.map(o=>"<option>"+o+"</option>").join("")+"</select></td>";
+  if(t==="date") return "<td><input type='text' class='dt' inputmode='numeric' maxlength='10' placeholder='يوم/شهر/سنة' autocomplete='off'></td>";
   return "<td"+(c[0]==="الاسم الرباعي"?" class='nm'":"")+"><input type='"+t+"'"+(t==="number"?" min='0' inputmode='numeric'":"")+"></td>";
 }
 function addRow(k){
@@ -149,7 +166,7 @@ function fill(d){
   for(const k in CFG){
     const tb=T(k).tBodies[0]; tb.innerHTML="";
     const rows=(d[k]&&d[k].length)?d[k]:[null];
-    rows.forEach(v=>{ addRow(k); if(v) [...tb.rows[tb.rows.length-1].querySelectorAll("input,select")].forEach((e,i)=>e.value=(v[i]==null?"":v[i])); });
+    rows.forEach(v=>{ addRow(k); if(v) [...tb.rows[tb.rows.length-1].querySelectorAll("input,select")].forEach((e,i)=>{ let x=(v[i]==null?"":String(v[i])); const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(x); if(m) x=m[3]+"/"+m[2]+"/"+m[1]; e.value=x; }); });
     renum(k);
   }
 }
@@ -185,11 +202,12 @@ async function send(){
   for(const k in CFG){
     const rows=collect(k);
     rows.forEach(r=>REQ[k].forEach(i=>{ if(!r.vals[i]){ r.el[i].classList.add("err-cell"); bad++; } }));
+    rows.forEach(r=>r.el.forEach((e,i)=>{ if(e.classList.contains("dt") && r.vals[i]){ const iso=toISO(r.vals[i]); if(iso) r.vals[i]=iso; else { e.classList.add("err-cell"); bad++; } } }));
     rows.forEach(r=>{ const nm=r.vals[0]; if(k!=="cls" && nm && nm.split(/\s+/).length<4){ r.el[0].classList.add("err-cell"); bad++; } });
     data[k]=rows.map(r=>r.vals);
   }
   if(!data.stay.length && !data.out.length && !data.cls.length) return show("لم تُدخل أي بيانات.","err");
-  if(bad) return show("هناك حقول ناقصة أو اسم غير رباعي (مظللة بالأحمر). أكملها ثم أعد الإرسال.","err");
+  if(bad) return show("هناك حقول ناقصة أو اسم غير رباعي (مظللة بالأحمر). أكملها ثم أعد الإرسال. التاريخ يُكتب أرقاماً فقط مثل 15032015.","err");
   const btn=$("send"); btn.disabled=true;
   try{
     const chk=await (await fetch(q(center))).json();
