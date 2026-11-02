@@ -35,6 +35,10 @@ button.del{border:0;color:var(--bad);padding:2px 8px;font-size:1.1rem}
 .bar{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}
 #msg{margin:12px 0;padding:10px;border-radius:4px;display:none}
 #msg.ok{display:block;background:#e6f4ea;color:#14532d}
+#msg.info{display:block;background:#e8f1f8;color:var(--accent);border:1px solid #b7d3e6}
+#msg.info::before{content:"";display:inline-block;width:14px;height:14px;margin-inline-end:8px;vertical-align:-2px;border:3px solid #b7d3e6;border-top-color:var(--accent);border-radius:50%;animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){#msg.info::before{animation:none}}
 #msg.err{display:block;background:#fdecea;color:var(--bad)}
 .err-cell{background:#ff8a80!important;outline:3px solid #d50000;outline-offset:-3px}
 td.err-cell select,td.err-cell input{background:transparent}
@@ -192,6 +196,7 @@ async function restore(){
   const c=$("center").value; if(!c) return show("اختر اسم المركز أو المدرسة أولاً.","err");
   if(!confirm("سيتم استبدال ما هو مكتوب الآن بالبيانات التي أُرسلت سابقاً. متابعة؟")) return;
   try{
+    show("جارٍ استرجاع البيانات المرسلة سابقاً من الجدول. قد يستغرق ذلك عدة ثوانٍ…","info");
     const d=await (await fetch(q(c))).json();
     if(d.error) return show(d.error,"err");
     if(!d.found) return show("لا توجد بيانات مرسلة سابقاً لهذا المركز.","err");
@@ -216,16 +221,19 @@ async function send(){
   }
   if(!data.stay.length && !data.out.length && !data.cls.length) return show("لم تُدخل أي بيانات.","err");
   if(bad) return show("هناك حقول ناقصة أو اسم غير رباعي أو تاريخ غير صحيح (مظللة بالأحمر). أكملها ثم أعد الإرسال.","err");
-  const btn=$("send"); btn.disabled=true;
+  const btn=$("send"), label=btn.textContent;
+  btn.disabled=true; btn.textContent="جارٍ التنفيذ…";
   try{
+    show("الخطوة 1 من 2: جارٍ التحقق من بيانات المركز في الجدول. قد يستغرق ذلك عدة ثوانٍ، لا تغلق الصفحة.","info");
     const chk=await (await fetch(q(center))).json();
-    if(chk.error){ btn.disabled=false; return show(chk.error,"err"); }
-    if(!confirm("سيتم إرسال بيانات: "+center+(chk.found?"\nسبق أن أُرسلت بيانات لهذا المركز وستُستبدل بهذه.":"")+"\nمتابعة؟")){ btn.disabled=false; return; }
+    if(chk.error) return show(chk.error,"err");
+    if(!confirm("سيتم إرسال بيانات: "+center+(chk.found?"\nسبق أن أُرسلت بيانات لهذا المركز وستُستبدل بهذه.":"")+"\nمتابعة؟")){ $("msg").className="noprint"; return; }
+    show("الخطوة 2 من 2: جارٍ إرسال البيانات وحفظها في الجدول. قد يستغرق ذلك عدة ثوانٍ، انتظر حتى تظهر رسالة التأكيد.","info");
     await fetch(API_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:JSON.stringify(data)});
-    show("تم إرسال البيانات. اطبع نسخة للتوقيع وسلّمها للجهاز التنفيذي. إذا نسيت الطباعة، اختر المركز واضغط (استرجاع ما أرسلته سابقاً).","ok");
+    show("تم إرسال البيانات وحفظها. اطبع نسخة للتوقيع وسلّمها للجهاز التنفيذي. إذا نسيت الطباعة، اختر المركز واضغط (استرجاع ما أرسلته سابقاً).","ok");
     if(confirm("تم الإرسال. هل تريد طباعة النسخة الآن؟")) doPrint();
   }catch(e){ show("فشل الإرسال، تحقق من الاتصال وأعد المحاولة.","err"); }
-  btn.disabled=false;
+  finally{ btn.disabled=false; btn.textContent=label; }
 }
 
 function doPrint(){
